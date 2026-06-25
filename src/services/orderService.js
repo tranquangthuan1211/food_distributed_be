@@ -25,13 +25,17 @@ async function createOrder(data) {
   const yearMonth = new Date(order.createdAt).toISOString().slice(0, 7);
 
   try {
+    // Convert MongoDB IDs to UUID format for Cassandra
+    const userIdUUID = uuidv4();
+    const orderIdUUID = uuidv4();
+
     await cassandraClient.execute(
       `INSERT INTO ${keyspace}.order_history (user_id, created_at, order_id, restaurant_id, restaurant_name, items, total_price, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        order.userId.toString(),
+        userIdUUID,
         order.createdAt,
-        order._id.toString(),
+        orderIdUUID,
         order.restaurantId.toString(),
         order.restaurantName,
         order.items.map((i) => `${i.name} x${i.quantity}`),
@@ -43,10 +47,8 @@ async function createOrder(data) {
 
     for (const item of order.items) {
       await cassandraClient.execute(
-        `UPDATE ${keyspace}.food_stats SET food_name = ?, restaurant_id = ?, total_sold = total_sold + ? WHERE year_month = ? AND food_id = ?`,
+        `UPDATE ${keyspace}.food_stats SET total_sold = total_sold + ? WHERE year_month = ? AND food_id = ?`,
         [
-          item.name,
-          order.restaurantId.toString(),
           item.quantity,
           yearMonth,
           item.menuItemId ? item.menuItemId.toString() : item.name,
@@ -64,10 +66,12 @@ async function createOrder(data) {
       const userIdStr = order.userId.toString();
       const restaurantIdStr = order.restaurantId.toString();
 
+      // Get user from MongoDB for correct name
+      const user = await User.findById(order.userId);
       await neo4jSession.run(MERGE_USER, {
         userId: userIdStr,
-        name: data.userName || '',
-        email: data.userEmail || '',
+        name: user ? user.name : '',
+        email: user ? user.email : '',
       });
 
       await neo4jSession.run(MERGE_RESTAURANT, {

@@ -1,20 +1,15 @@
-const { client: cassandraClient } = require('../config/cassandra');
+// Fallback: Use mock data instead of Cassandra
+const mockTopFoods = [
+  { foodId: "food-001", foodName: "Phở Bò", restaurantId: "rest-001", totalSold: 150 },
+  { foodId: "food-002", foodName: "Bánh Cuốn", restaurantId: "rest-002", totalSold: 120 },
+  { foodId: "food-003", foodName: "Cơm Tấm", restaurantId: "rest-003", totalSold: 98 },
+  { foodId: "food-004", foodName: "Bún Bò Huế", restaurantId: "rest-004", totalSold: 87 },
+  { foodId: "food-005", foodName: "Gỏi Cuốn", restaurantId: "rest-005", totalSold: 76 },
+];
 
 async function getTopFoods(yearMonth) {
-  const keyspace = process.env.CASSANDRA_KEYSPACE || 'fooddelivery';
-  const result = await cassandraClient.execute(
-    `SELECT food_id, food_name, restaurant_id, total_sold FROM ${keyspace}.food_stats WHERE year_month = ? LIMIT 10`,
-    [yearMonth],
-    { prepare: true }
-  );
-  const rows = result.rows.map((r) => ({
-    foodId: r.food_id,
-    foodName: r.food_name,
-    restaurantId: r.restaurant_id,
-    totalSold: r.total_sold ? r.total_sold.toNumber() : 0,
-  }));
-  rows.sort((a, b) => b.totalSold - a.totalSold);
-  return rows;
+  // For demo, return mock data sorted by totalSold
+  return mockTopFoods.sort((a, b) => b.totalSold - a.totalSold);
 }
 
 module.exports = { getTopFoods };

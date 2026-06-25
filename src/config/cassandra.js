@@ -1,4 +1,5 @@
 const cassandra = require('cassandra-driver');
+const { v4: uuidv4 } = require('uuid');
 
 const client = new cassandra.Client({
   contactPoints: (process.env.CASSANDRA_CONTACT_POINTS || 'localhost').split(','),
@@ -36,8 +37,6 @@ async function connectCassandra() {
     CREATE TABLE IF NOT EXISTS ${keyspace}.food_stats (
       year_month text,
       food_id text,
-      food_name text,
-      restaurant_id text,
       total_sold counter,
       PRIMARY KEY (year_month, food_id)
     ) WITH CLUSTERING ORDER BY (food_id ASC)

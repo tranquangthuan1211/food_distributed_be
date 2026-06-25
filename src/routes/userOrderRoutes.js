@@ -35,25 +35,28 @@ const authMiddleware = require('../middleware/auth');
  *       500:
  *         description: Server error
  */
+const Order = require('../models/mongodb/Order');
+
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const userId = req.params.id;
-    const keyspace = process.env.CASSANDRA_KEYSPACE || 'fooddelivery';
-    const result = await cassandraClient.execute(
-      `SELECT * FROM ${keyspace}.order_history WHERE user_id = ?`,
-      [userId],
-      { prepare: true }
-    );
-    const orders = result.rows.map((r) => ({
-      orderId: r.order_id,
-      restaurantId: r.restaurant_id,
-      restaurantName: r.restaurant_name,
-      items: r.items,
-      totalPrice: r.total_price,
-      status: r.status,
-      createdAt: r.created_at,
+    // Use MongoDB instead of Cassandra (fallback)
+    const orders = await Order.find({ userId })
+      .populate('restaurantId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    const formattedOrders = orders.map(order => ({
+      orderId: order._id,
+      restaurantId: order.restaurantId._id,
+      restaurantName: order.restaurantId.name || order.restaurantName,
+      items: order.items,
+      totalPrice: order.totalPrice,
+      status: order.status,
+      createdAt: order.createdAt,
     }));
-    res.json({ success: true, data: orders });
+
+    res.json({ success: true, data: formattedOrders });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
